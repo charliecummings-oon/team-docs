@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Code: How It All Fits Together</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111;
+      margin: 32px auto;
+      max-width: 1000px;
+      line-height: 1.5;
+      font-size: 12pt;
+      padding: 0 20px;
+    }
+    h1 { font-size: 22pt; margin: 0 0 4px 0; }
+    h2 { font-size: 16pt; margin: 24px 0 10px 0; }
+    h3 { font-size: 13pt; margin: 16px 0 6px 0; color: #333; }
+    p { margin: 8px 0; }
+    .meta { color: #444; margin-bottom: 24px; font-size: 11pt; }
+
+    /* Tab Navigation */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      border: none;
+      background: none;
+      font-size: 11pt;
+      font-family: Arial, Helvetica, sans-serif;
+      cursor: pointer;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: #333; }
+    .tab-btn.active { font-weight: bold; }
+    .tab-btn[data-tab="config"].active { color: #2563eb; border-bottom-color: #2563eb; }
+    .tab-btn[data-tab="memory"].active { color: #059669; border-bottom-color: #059669; }
+    .tab-btn[data-tab="session"].active { color: #7c3aed; border-bottom-color: #7c3aed; }
+    .tab-btn[data-tab="guardrails"].active { color: #d97706; border-bottom-color: #d97706; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Cards */
+    .card {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 14px 18px;
+      background: #fff;
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+      margin-bottom: 12px;
+    }
+    .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card.blue { border-left: 4px solid #2563eb; }
+    .card.green { border-left: 4px solid #059669; }
+    .card.purple { border-left: 4px solid #7c3aed; }
+    .card.amber { border-left: 4px solid #d97706; }
+    .card.gray { border-left: 4px solid #6b7280; }
+    .card.no-click { cursor: default; }
+    .card.no-click:hover { box-shadow: none; }
+
+    .card-title {
+      font-weight: bold;
+      font-size: 11.5pt;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-subtitle { font-size: 10.5pt; color: #555; }
+    .card-detail {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .card.expanded .card-detail { display: block; }
+    .expand-hint {
+      font-size: 9pt;
+      color: #999;
+      margin-left: auto;
+    }
+    .card.expanded .expand-hint { display: none; }
+
+    pre {
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 10pt;
+      background: #f5f5f5;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 10px 14px;
+      overflow-x: auto;
+      margin: 8px 0;
+      line-height: 1.45;
+    }
+    code {
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 10pt;
+      background: #f5f5f5;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .arrow-down {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 20pt;
+      line-height: 1;
+      margin: 4px 0;
+    }
+
+    /* Layer Stack */
+    .layer-stack { max-width: 650px; margin: 0 auto; }
+    .layer-label {
+      font-size: 9pt;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 4px;
+      margin-top: 12px;
+    }
+
+    /* Timeline */
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: #d1d5db;
+    }
+    .timeline-node {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .timeline-dot {
+      position: absolute;
+      left: -27px;
+      top: 6px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #7c3aed;
+      background: #fff;
+    }
+    .timeline-node.filled .timeline-dot { background: #7c3aed; }
+
+    /* Memory grid */
+    .mem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .mem-grid .card { margin-bottom: 0; }
+
+    /* Callout */
+    .callout {
+      margin: 12px 0;
+      padding: 10px 14px;
+      border-left: 3px solid #222;
+      background: #fafafa;
+      font-size: 11pt;
+    }
+    .callout strong { display: block; margin-bottom: 2px; }
+
+    /* Steps */
+    .step-row {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #d97706;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10pt;
+      font-weight: bold;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-content { flex: 1; }
+    .step-title { font-weight: bold; font-size: 11.5pt; }
+    .step-desc { font-size: 10.5pt; color: #555; margin-top: 2px; }
+    .step-arrow {
+      text-align: center;
+      color: #d97706;
+      margin: 2px 0 2px 10px;
+      font-size: 14pt;
+    }
+
+    .loop-back {
+      margin: 14px 0 14px 42px;
+      padding: 10px 14px;
+      border: 2px dashed #f59e0b;
+      border-radius: 6px;
+      background: #fffbeb;
+      font-size: 10.5pt;
+      color: #92400e;
+      max-width: 500px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 10.5pt;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 6px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #f3f6f9; font-size: 10pt; }
+
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 10pt; color: #888; }
+  </style>
+</head>
+<body>
+
+  <h1>Claude Code: How It All Fits Together</h1>
+  <div class="meta">
+    <p>Interactive guide for first-time users | Click any card to expand details</p>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="config">Configuration</button>
+    <button class="tab-btn" data-tab="memory">Memory System</button>
+    <button class="tab-btn" data-tab="session">Session Lifecycle</button>
+    <button class="tab-btn" data-tab="guardrails">Guardrails</button>
+  </div>
+
+
+  <!-- ============================================================ -->
+  <!-- PANEL 1: CONFIGURATION                                       -->
+  <!-- ============================================================ -->
+  <section class="tab-panel active" id="panel-config">
+
+    <p>Claude Code reads instructions from three tiers, loaded in order. Global rules apply everywhere. Project rules add repo-specific conventions. Settings configure hooks and integrations.</p>
+
+    <div class="layer-stack">
+
+      <div class="layer-label">Tier 1 &mdash; Global (all sessions, all projects)</div>
+      <div class="card blue" onclick="toggleCard(this)">
+        <div class="card-title">
+          <code>~/.claude/CLAUDE.md</code>
+          <span class="expand-hint">click to expand</span>
+        </div>
+        <div class="card-subtitle">Non-negotiable rules for every session</div>
+        <div class="card-detail">
+          <p><strong>What to put here:</strong> Anything you&rsquo;d tell a new team member on day one that applies regardless of project.</p>
+          <p><strong>Examples from our setup:</strong></p>
+          <ul>
+            <li>After any code changes &rarr; update changelog + business context files</li>
+            <li>After EVERY conversation &rarr; update business context log</li>
+            <li>Before writing any database query &rarr; read the query reference guide</li>
+            <li>All data analysis must be script-driven (never mental math)</li>
+          </ul>
+          <div class="callout">
+            <strong>Why mandatory?</strong>
+            Claude has predictable failure modes: forgetting to maintain context, doing approximate math. Making rules explicit and global prevents drift.
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">&darr;</div>
+
+      <div class="layer-label">Tier 2 &mdash; Project (repo-specific)</div>
+      <div class="card blue" onclick="toggleCard(this)">
+        <div class="card-title">
+          <code>&lt;repo&gt;/CLAUDE.md</code>
+          <span class="expand-hint">click to expand</span>
+        </div>
+        <div class="card-subtitle">Project conventions + domain context</div>
+        <div class="card-detail">
+          <table>
+            <tr><th style="width: 35%;">What to Include</th><th>Why</th></tr>
+            <tr><td>What the project does</td><td>Enough that Claude can reason about it without asking</td></tr>
+            <tr><td>Code conventions</td><td>Formatter, line length, naming patterns, preferred libraries</td></tr>
+            <tr><td>Domain concepts</td><td>Your framework, your terminology, your business logic</td></tr>
+            <tr><td>File organization</td><td>Where scripts live, where docs go, how things are structured</td></tr>
+            <tr><td>Key workflows</td><td>How to run tests, deploy, verify output</td></tr>
+          </table>
+          <div class="callout">
+            <strong>Key principle</strong>
+            If you find yourself re-explaining something every session, it belongs in the CLAUDE.md.
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">&darr;</div>
+
+      <div class="layer-label">Tier 3 &mdash; Settings (hooks + integrations)</div>
+      <div class="card blue" onclick="toggleCard(this)">
+        <div class="card-title">
+          <code>~/.claude/settings.json</code>
+          <span class="expand-hint">click to expand</span>
+        </div>
+        <div class="card-subtitle">SessionStart hook and MCP server connections</div>
+        <div class="card-detail">
+<pre>{
+  "hooks": {
+    "SessionStart": [{
+      "hooks": [{
+        "type": "command",
+        "command": "bash ~/.claude/scripts/session-context.sh"
+      }]
+    }]
+  }
+}</pre>
+          <p>This is where you define your SessionStart hook (fires every session) and any MCP server connections for external APIs.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- PANEL 2: MEMORY SYSTEM                                       -->
+  <!-- ============================================================ -->
+  <section class="tab-panel" id="panel-memory">
+
+    <p>The memory directory (<code>~/.claude/projects/&lt;path&gt;/memory/</code>) persists across sessions. These files are how Claude accumulates knowledge over time.</p>
+
+    <div class="mem-grid">
+
+      <div class="card green" onclick="toggleCard(this)" style="grid-column: 1 / -1;">
+        <div class="card-title">
+          <code>MEMORY.md</code> &mdash; The Index
+          <span class="expand-hint">click to expand</span>
+        </div>
+        <div class="card-subtitle">First 200 lines injected into every session&rsquo;s system prompt automatically</div>
+        <div class="card-detail">
+          <p>Use as a concise index:</p>
+          <ul>
+            <li>Project overview (what you&rsquo;re building, what stack)</li>
+            <li>Key metrics or goals Claude should always consider</li>
+            <li>Links to other memory files with one-line descriptions</li>
+          </ul>
+          <p><strong>Keep it tight.</strong> The 200-line limit is real. Detailed material goes in dedicated files.</p>
+        </div>
+      </div>
+
+      <div class="card green" onclick="toggleCard(this)" style="grid-column: 1 / -1;">
+        <div class="card-title">
+          <code>CURRENT_STATE.md</code> &mdash; Where You Are Right Now
+          <span class="expand-hint">click to expand</span>
+        </div>
+        <div class="card-subtitle">Curated strategic summary (~50-80 lines), rewritten when the landscape shifts. Injected in full every session.</div>
+        <div class="card-detail">
+          <p>Unlike the append-only logs below, this file gets <strong>rewritten</strong> (not appended) when the situation changes meaningfully.</p>
+          <table>
+            <tr><th style="width: 35%;">Section</th><th>What It Contains</th></tr>
+            <tr><td>Active projects</td><td>What&rsquo;s in flight, what phase each is in, what&rsquo;s blocked</td></tr>
+            <tr><td>Key findings</td><td>Conclusions still informing current work</td></tr>
+            <tr><td>Open decisions</td><td>Unresolved questions awaiting input or analysis</td></tr>
+            <tr><td>Stakeholder context</td><td>What leadership has said that&rsquo;s still directing work</td></tr>
+          </table>
+          <p><strong>When to rewrite:</strong> New key finding, stakeholder directive, project phase change, or major decision. Not every session.</p>
+        </div>
+      </div>
+
+      <div class="card green" onclick="toggleCard(this)">
+        <div class="card-title">
+          <code>CHANGELOG.md</code>
+          <span class="expand-hint">expand</span>
+        </div>
+        <div class="card-subtitle">What changed (code, config)</div>
+        <div class="card-detail">
+          <p>Running log with dated sections. Updated automatically by Claude after any code work.</p>
+<pre>## 2026-02-18
+
+### [project] &mdash; What changed
+
+What was done and why.
+
+**Files created/modified:**
+- path/to/file.py</pre>
+          <p>Latest entry gets injected into every new session by the hook.</p>
+        </div>
+      </div>
+
+      <div class="card green" onclick="toggleCard(this)">
+        <div class="card-title">
+          <code>BUSINESS_CONTEXT.md</code>
+          <span class="expand-hint">expand</span>
+        </div>
+        <div class="card-subtitle">What you know (insights, decisions)</div>
+        <div class="card-detail">
+          <p>Updated after <strong>every</strong> conversation &mdash; not just code sessions. Captures:</p>
+          <ul>
+            <li>Stakeholder feedback from meetings</li>
+            <li>Data findings and implications</li>
+            <li>Strategic decisions and reasoning</li>
+            <li>Domain term definitions</li>
+          </ul>
+          <p>Latest entry injected by the hook. When the file exceeds ~800 lines, entries older than 14 days get moved to <code>BUSINESS_CONTEXT_ARCHIVE.md</code>. Before archiving, verify active context is captured in <code>CURRENT_STATE.md</code>.</p>
+        </div>
+      </div>
+
+      <div class="card green" onclick="toggleCard(this)" style="grid-column: 1 / -1;">
+        <div class="card-title">
+          Domain Reference Files &mdash; <code>*.md</code>
+          <span class="expand-hint">click to expand</span>
+        </div>
+        <div class="card-subtitle">Dedicated files for knowledge Claude consults on demand</div>
+        <div class="card-detail">
+          <table>
+            <tr><th>Example</th><th>What It Contains</th></tr>
+            <tr><td>Database query guide</td><td>Schemas, default filters, connection config, gotchas</td></tr>
+            <tr><td>Writing playbook</td><td>How to structure briefs/reports for your team</td></tr>
+            <tr><td>Stakeholder framework</td><td>Leadership vision, open questions, priorities</td></tr>
+          </table>
+          <p>A rule in global CLAUDE.md like &ldquo;before writing any SQL, read the query guide&rdquo; ensures Claude actually consults these.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="callout">
+      <strong>How these connect</strong>
+      MEMORY.md is the always-on index. CURRENT_STATE.md provides the full strategic picture. CHANGELOG and BUSINESS_CONTEXT get their latest entries injected by the SessionStart hook. Domain reference files are read on demand. Together, they give Claude both broad awareness and deep domain knowledge.
+    </div>
+
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- PANEL 3: SESSION LIFECYCLE                                    -->
+  <!-- ============================================================ -->
+  <section class="tab-panel" id="panel-session">
+
+    <p>Every session follows this lifecycle. The SessionStart hook provides automatic continuity &mdash; no manual context loading needed.</p>
+
+    <div class="timeline" style="max-width: 680px; margin: 24px auto;">
+
+      <div class="timeline-node filled">
+        <div class="timeline-dot"></div>
+        <div class="card purple" onclick="toggleCard(this)">
+          <div class="card-title">Session Start <span class="expand-hint">click to expand</span></div>
+          <div class="card-subtitle">You open Claude Code in a project directory</div>
+          <div class="card-detail">
+            <p>Three things happen automatically:</p>
+            <ol>
+              <li>Global <code>~/.claude/CLAUDE.md</code> loaded (your mandatory rules)</li>
+              <li>Project <code>CLAUDE.md</code> loaded (repo conventions + domain)</li>
+              <li>SessionStart hook fires</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-node filled">
+        <div class="timeline-dot"></div>
+        <div class="card purple" onclick="toggleCard(this)">
+          <div class="card-title">Hook Fires <span class="expand-hint">click to expand</span></div>
+          <div class="card-subtitle">Current state + latest changelog + latest business context injected</div>
+          <div class="card-detail">
+<pre>#!/bin/bash
+MEMORY_DIR="~/.claude/projects/&lt;your-project&gt;/memory"
+
+echo "=== CURRENT STATE ==="
+cat "$MEMORY_DIR/CURRENT_STATE.md"
+
+echo "=== RECENT CHANGELOG ==="
+awk '/^## [0-9]{4}-/{if(found) exit; found=1} found' \
+  "$MEMORY_DIR/CHANGELOG.md"
+
+echo "=== RECENT BUSINESS CONTEXT ==="
+awk '/^## [0-9]{4}-/{if(found) exit; found=1} found' \
+  "$MEMORY_DIR/BUSINESS_CONTEXT.md"</pre>
+            <p>Injects three things: (1) CURRENT_STATE in full (curated strategic summary), (2) latest dated section from CHANGELOG, (3) latest dated section from BUSINESS_CONTEXT.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-node">
+        <div class="timeline-dot" style="border-color: #111; background: #111;"></div>
+        <div class="card gray no-click">
+          <div class="card-title" style="font-size: 13pt;">Claude Has Full Context</div>
+          <div class="card-subtitle">Global rules + project conventions + strategic state + latest changes + latest business insights + memory index</div>
+        </div>
+      </div>
+
+      <div class="timeline-node">
+        <div class="timeline-dot" style="border-color: #6b7280;"></div>
+        <div class="card gray" onclick="toggleCard(this)">
+          <div class="card-title">You Work <span class="expand-hint">click to expand</span></div>
+          <div class="card-subtitle">Analysis, coding, document creation, discussion</div>
+          <div class="card-detail">
+            <p>During the session, Claude can:</p>
+            <ul>
+              <li>Read and write files in your project</li>
+              <li>Run scripts and terminal commands</li>
+              <li>Read memory files for reference (query guide, playbooks, etc.)</li>
+              <li>Use external tools you&rsquo;ve configured (APIs, Google Drive, etc.)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-node filled">
+        <div class="timeline-dot"></div>
+        <div class="card purple" onclick="toggleCard(this)">
+          <div class="card-title">Session Ends &mdash; Memory Updated <span class="expand-hint">click to expand</span></div>
+          <div class="card-subtitle">Logs updated, strategic state rewritten if landscape shifted</div>
+          <div class="card-detail">
+            <table>
+              <tr><th>Trigger</th><th>File Updated</th></tr>
+              <tr><td>Code/config changed</td><td><code>CHANGELOG.md</code> &mdash; what changed and why</td></tr>
+              <tr><td>Every conversation</td><td><code>BUSINESS_CONTEXT.md</code> &mdash; insights, decisions, questions</td></tr>
+              <tr><td>Landscape shifted</td><td><code>CURRENT_STATE.md</code> &mdash; rewritten (not appended) to reflect new reality</td></tr>
+            </table>
+            <p>These updates become the context injected into the <em>next</em> session.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-node filled">
+        <div class="timeline-dot" style="border-color: #2563eb; background: #2563eb;"></div>
+        <div class="card" style="border-left: 4px solid #2563eb; background: #f0f7ff;" onclick="toggleCard(this)">
+          <div class="card-title">Next Session &mdash; Automatic Continuity <span class="expand-hint">click to expand</span></div>
+          <div class="card-subtitle">Hook injects updates from the previous session</div>
+          <div class="card-detail">
+            <p><strong>The feedback loop:</strong></p>
+            <ol>
+              <li>Monday: work session &rarr; memory files updated</li>
+              <li>Tuesday: new session &rarr; hook injects Monday&rsquo;s updates &rarr; Claude picks up where you left off</li>
+              <li>Wednesday: boss gives feedback &rarr; business context updated</li>
+              <li>Thursday: new session &rarr; Claude knows what the boss said</li>
+            </ol>
+            <p>No &ldquo;where were we?&rdquo; &mdash; the system remembers for you.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- PANEL 4: GUARDRAILS                                          -->
+  <!-- ============================================================ -->
+  <section class="tab-panel" id="panel-guardrails">
+
+    <p>Two categories of guardrails have been the most impactful: forcing analytical rigor and verifying document accuracy.</p>
+
+    <h3>Analytical Rigor</h3>
+
+    <div class="card amber no-click" style="margin-bottom: 16px;">
+      <div class="card-subtitle" style="font-style: italic;">
+        &ldquo;All data analysis must use Python scripts to compute results. Every number presented must come from script output. Never do mental math, eyeball data, or approximate.&rdquo;
+      </div>
+    </div>
+
+    <p>Claude will do mental math if you let it. It&rsquo;ll eyeball a CSV and say &ldquo;about 40% are profitable&rdquo; when the real number is 34%. Put this rule in your global CLAUDE.md to eliminate it.</p>
+
+    <h3 style="margin-top: 24px;">Artifact Verification</h3>
+
+    <p>If Claude produces documents with data claims, consider building a verification pipeline. This is a set of scripts that work together to catch errors before stakeholders do.</p>
+
+    <div style="max-width: 620px; margin: 16px auto;">
+
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Analysis Script (<code>--claims</code> flag)</div>
+          <div class="step-desc">Your main analysis script does double duty. Run normally: human-readable report. Run with <code>--claims</code>: also outputs a JSON manifest of every verifiable fact (values, types, tolerances). This is the source of truth.</div>
+        </div>
+      </div>
+      <div class="step-arrow">&darr;</div>
+
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Verification Script</div>
+          <div class="step-desc">Takes an HTML artifact + the claims JSON. Runs two kinds of checks:<br>
+            <strong>Deterministic (PASS/FAIL):</strong> Rounded millions, exact integers, percentages, dollar amounts, decimal ratios.<br>
+            <strong>Semantic (WARN):</strong> Absolutist claims (&ldquo;all&rdquo;, &ldquo;every&rdquo;), equivalence claims (&ldquo;same&rdquo;, &ldquo;identical&rdquo;), causal claims (&ldquo;because&rdquo;), status claims (&ldquo;done&rdquo;, &ldquo;complete&rdquo;).
+          </div>
+        </div>
+      </div>
+      <div class="step-arrow">&darr;</div>
+
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Validation Scripts</div>
+          <div class="step-desc">Cross-reference your analysis findings against external data sources (e.g., per-message API data) to detect aggregation artifacts, inflated estimates, or methodology issues. These catch problems in the <em>analysis itself</em>, not just the document.</div>
+        </div>
+      </div>
+
+      <div class="loop-back">
+        <strong>FAIL?</strong> Fix the document, re-run. Repeat until 0 FAIL, all WARN addressed.
+      </div>
+
+    </div>
+
+    <p>Put the verification protocol in your project CLAUDE.md so Claude runs it automatically after any document edit.</p>
+
+    <div class="callout" style="margin-top: 16px;">
+      <strong>Real catches</strong>
+      This pattern has caught: a claim that said &ldquo;same creative&rdquo; when it was actually &ldquo;same offer&rdquo; (subject lines differed), a claim of &ldquo;all 10&rdquo; that was actually 9 of 10, rounding discrepancies in percentages, and $248K in inflated opportunity estimates from data aggregation artifacts.
+    </div>
+
+    <h3 style="margin-top: 24px;">Other Useful Rules</h3>
+
+    <div class="card amber" onclick="toggleCard(this)">
+      <div class="card-title">Examples of effective global rules <span class="expand-hint">click to expand</span></div>
+      <div class="card-detail">
+        <table>
+          <tr><th>Rule</th><th>What It Prevents</th></tr>
+          <tr><td>&ldquo;Update BUSINESS_CONTEXT after every conversation&rdquo;</td><td>Knowledge loss between sessions</td></tr>
+          <tr><td>&ldquo;Read the query guide before writing any SQL&rdquo;</td><td>Wrong schemas, missing filters, timezone bugs</td></tr>
+          <tr><td>&ldquo;All analysis must be script-driven&rdquo;</td><td>Mental math errors, hallucinated numbers</td></tr>
+          <tr><td>&ldquo;Run verification after editing any artifact&rdquo;</td><td>Factual errors reaching stakeholders</td></tr>
+        </table>
+        <p style="margin-top: 8px; font-size: 10.5pt; color: #555;">The pattern: identify Claude&rsquo;s predictable failure modes for your work, then write explicit rules that prevent them.</p>
+      </div>
+    </div>
+
+  </section>
+
+
+  <div class="footer">
+    <p>Full documentation: <code>memory/claude-code-workflow.md</code></p>
+  </div>
+
+
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    function toggleCard(el) {
+      el.classList.toggle('expanded');
+    }
+  </script>
+
+</body>
+</html>
