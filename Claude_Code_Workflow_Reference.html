@@ -2,136 +2,444 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How I Use Claude Code</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: Arial, Helvetica, sans-serif;
-      color: #111;
-      margin: 32px auto;
-      max-width: 780px;
-      line-height: 1.5;
-      font-size: 12pt;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, Helvetica, sans-serif;
+      color: #1a1a2e;
+      line-height: 1.6;
+      font-size: 15px;
+      background: #f8f9fb;
     }
-    h1 { font-size: 22pt; margin: 0 0 6px 0; }
-    h2 { font-size: 16pt; margin: 28px 0 10px 0; border-bottom: 2px solid #111; padding-bottom: 4px; }
-    h3 { font-size: 13pt; margin: 18px 0 6px 0; }
-    p { margin: 8px 0; }
-    ul, ol { margin: 6px 0 10px 22px; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 260px;
+      height: 100vh;
+      background: #1a1a2e;
+      color: #c4c8d8;
+      overflow-y: auto;
+      padding: 28px 0 40px 0;
+      z-index: 100;
+    }
+    .sidebar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      padding: 0 24px;
+      margin-bottom: 4px;
+      letter-spacing: -0.3px;
+    }
+    .sidebar-subtitle {
+      font-size: 11px;
+      color: #7b7f95;
+      padding: 0 24px;
+      margin-bottom: 28px;
+    }
+    .sidebar nav { display: flex; flex-direction: column; }
+    .sidebar a {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 8px 24px;
+      color: #9196ab;
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.15s, background 0.15s, border-left-color 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .sidebar a:hover {
+      color: #e0e3ef;
+      background: rgba(255,255,255,0.04);
+    }
+    .sidebar a.active {
+      color: #fff;
+      background: rgba(255,255,255,0.07);
+      border-left-color: #6c63ff;
+    }
+    .sidebar .nav-num {
+      font-size: 11px;
+      font-weight: 600;
+      color: #555a70;
+      min-width: 18px;
+    }
+    .sidebar a.active .nav-num { color: #6c63ff; }
+
+    /* ── Main Content ── */
+    .main {
+      margin-left: 260px;
+      min-height: 100vh;
+    }
+
+    /* Header bar */
+    .page-header {
+      background: #fff;
+      border-bottom: 1px solid #e4e7ed;
+      padding: 20px 48px;
+    }
+    .page-header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1a1a2e;
+      letter-spacing: -0.5px;
+    }
+    .page-header .meta {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .content {
+      max-width: 820px;
+      padding: 40px 48px 80px;
+    }
+
+    /* ── Sections ── */
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+    section h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e4e7ed;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    section h2 .sec-num {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6c63ff;
+      background: #eeedff;
+      border-radius: 4px;
+      padding: 2px 8px;
+      line-height: 1;
+    }
+    section h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2d2d44;
+      margin: 28px 0 10px 0;
+    }
+    p { margin: 10px 0; }
+    ul, ol { margin: 8px 0 12px 24px; }
     li { margin: 4px 0; }
+
+    /* ── Tables ── */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 10px 0 14px 0;
+      margin: 14px 0 18px 0;
+      font-size: 14px;
     }
     th, td {
-      border: 1px solid #999;
-      padding: 6px 10px;
+      border: 1px solid #dfe2e8;
+      padding: 8px 12px;
       vertical-align: top;
+      text-align: left;
     }
-    th { background: #f0f0f0; text-align: left; font-size: 11pt; }
-    .meta { color: #444; margin-bottom: 20px; font-size: 11pt; }
-    .callout {
-      margin: 12px 0;
-      padding: 10px 14px;
-      border-left: 3px solid #222;
-      background: #fafafa;
-      font-size: 11.5pt;
+    th {
+      background: #f3f4f8;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: #4b5068;
     }
-    .callout strong { display: block; margin-bottom: 2px; }
-    .section-num { color: #666; font-weight: normal; }
-    .small { font-size: 10pt; color: #666; }
+    tr:nth-child(even) td { background: #fafbfc; }
+
+    /* ── Code ── */
     .code-block {
-      font-family: Consolas, 'Courier New', monospace;
-      font-size: 10pt;
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      padding: 10px 14px;
-      margin: 8px 0;
+      font-family: 'SF Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+      font-size: 13px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 12px 0;
       white-space: pre;
       overflow-x: auto;
-      line-height: 1.45;
+      line-height: 1.5;
     }
     code {
-      font-family: Consolas, 'Courier New', monospace;
-      font-size: 10pt;
-      background: #f0f0f0;
-      padding: 1px 4px;
+      font-family: 'SF Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+      font-size: 13px;
+      background: #eef0f5;
+      color: #5046e5;
+      padding: 2px 6px;
+      border-radius: 4px;
     }
+
+    /* ── Callouts ── */
+    .callout {
+      margin: 16px 0;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .callout strong { display: block; margin-bottom: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .callout-blue { background: #eef2ff; border-left: 4px solid #6c63ff; }
+    .callout-blue strong { color: #4338ca; }
+    .callout-amber { background: #fffbeb; border-left: 4px solid #d97706; }
+    .callout-amber strong { color: #92400e; }
+    .callout-green { background: #ecfdf5; border-left: 4px solid #059669; }
+    .callout-green strong { color: #065f46; }
+    .callout-gray { background: #f3f4f6; border-left: 4px solid #6b7280; }
+    .callout-gray strong { color: #374151; }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 16px 0;
+    }
+    .card-grid.single { grid-template-columns: 1fr; }
+    .info-card {
+      background: #fff;
+      border: 1px solid #e4e7ed;
+      border-radius: 8px;
+      padding: 16px 20px;
+      transition: box-shadow 0.15s;
+    }
+    .info-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .info-card h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #2d2d44;
+      margin-bottom: 6px;
+    }
+    .info-card h4 code { font-size: 13px; }
+    .info-card p { font-size: 13px; color: #5a5e73; margin: 4px 0; }
+    .info-card.full-width { grid-column: 1 / -1; }
+    .accent-bar { width: 40px; height: 3px; border-radius: 2px; margin-bottom: 10px; }
+    .accent-green { background: #059669; }
+    .accent-blue { background: #6c63ff; }
+    .accent-amber { background: #d97706; }
+    .accent-purple { background: #7c3aed; }
+
+    /* ── Steps ── */
+    .step-list { margin: 16px 0; }
+    .step-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .step-num-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #6c63ff;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-content { flex: 1; }
+    .step-content strong { display: block; font-size: 15px; color: #1a1a2e; }
+    .step-content span { font-size: 14px; color: #5a5e73; }
+
+    /* ── Timeline ── */
+    .timeline { position: relative; padding-left: 36px; margin: 20px 0; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 13px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: #dfe2e8;
+    }
+    .tl-node {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .tl-dot {
+      position: absolute;
+      left: -29px;
+      top: 5px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 3px solid #6c63ff;
+      background: #fff;
+    }
+    .tl-node.filled .tl-dot { background: #6c63ff; }
+    .tl-label {
+      font-weight: 600;
+      font-size: 15px;
+      color: #1a1a2e;
+    }
+    .tl-desc {
+      font-size: 14px;
+      color: #5a5e73;
+      margin-top: 2px;
+    }
+
+    /* ── File Map ── */
+    .file-map {
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      font-size: 13px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin: 12px 0;
+      line-height: 1.7;
+    }
+    .file-map .dir { color: #89b4fa; }
+    .file-map .file { color: #a6e3a1; }
+    .file-map .comment { color: #6c7086; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .content { padding: 24px 20px 60px; }
+      .page-header { padding: 16px 20px; }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Scrollbar (sidebar) ── */
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #3a3d52; border-radius: 2px; }
+
+    /* ── Smooth scroll ── */
+    html { scroll-behavior: smooth; }
   </style>
 </head>
 <body>
 
-  <h1>How I Use Claude Code</h1>
-  <div class="meta">
-    <p>A practical guide for first-time users | February 2026<br>
-    Covers the principles and patterns that make Claude Code effective for sustained, multi-session work.</p>
-  </div>
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-title">How I Use Claude Code</div>
+    <div class="sidebar-subtitle">Practical guide for sustained work</div>
+    <nav>
+      <a href="#session-amnesia" class="active"><span class="nav-num">01</span> Session Amnesia</a>
+      <a href="#config"><span class="nav-num">02</span> Configuration</a>
+      <a href="#memory"><span class="nav-num">03</span> Memory System</a>
+      <a href="#hook"><span class="nav-num">04</span> SessionStart Hook</a>
+      <a href="#guardrails"><span class="nav-num">05</span> Guardrails</a>
+      <a href="#extending"><span class="nav-num">06</span> Extending Claude Code</a>
+      <a href="#patterns"><span class="nav-num">07</span> Day-to-Day Patterns</a>
+      <a href="#reference"><span class="nav-num">08</span> Quick Reference</a>
+    </nav>
+  </aside>
 
 
-  <!-- ================================================================ -->
-  <h2><span class="section-num">1.</span> The Problem: Session Amnesia</h2>
-  <!-- ================================================================ -->
+  <!-- ── Main ── -->
+  <div class="main">
 
-  <p>Claude Code is a CLI agent that reads files, writes code, runs scripts, and executes terminal commands. Out of the box, <strong>every session starts from zero</strong> &mdash; no memory of past conversations, no knowledge of your codebase conventions, no business context.</p>
+    <div class="page-header">
+      <h1>How I Use Claude Code</h1>
+      <div class="meta">A practical guide for first-time users &middot; February 2026 &middot; Covers the principles and patterns that make Claude Code effective for sustained, multi-session work.</div>
+    </div>
 
-  <p>That&rsquo;s fine for one-off tasks. It&rsquo;s a problem when you&rsquo;re doing sustained work across days or weeks. You don&rsquo;t want to re-explain your project&rsquo;s architecture, your database schema, or what your boss said in yesterday&rsquo;s meeting.</p>
-
-  <p>We solve this with three mechanisms:</p>
-  <ol>
-    <li><strong>Configuration files</strong> &mdash; written instructions Claude reads at the start of every session (like an employee handbook)</li>
-    <li><strong>Memory files</strong> &mdash; a living knowledge base that grows across sessions (like a shared team wiki)</li>
-    <li><strong>A SessionStart hook</strong> &mdash; a script that automatically injects the latest context into every session (like a daily briefing)</li>
-  </ol>
-
-  <div class="callout">
-    <strong>The result</strong>
-    Every new session starts with full awareness of your project, conventions, recent work, and strategic context. No manual re-explanation needed.
-  </div>
+    <div class="content">
 
 
-  <!-- ================================================================ -->
-  <h2><span class="section-num">2.</span> Configuration Hierarchy</h2>
-  <!-- ================================================================ -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="session-amnesia">
+        <h2><span class="sec-num">01</span> The Problem: Session Amnesia</h2>
 
-  <p>Claude Code reads instructions from three tiers, loaded in order. Think <code>.gitconfig</code> (global) vs <code>.git/config</code> (repo-level).</p>
+        <p>Claude Code is a CLI agent that reads files, writes code, runs scripts, and executes terminal commands. Out of the box, <strong>every session starts from zero</strong> &mdash; no memory of past conversations, no knowledge of your codebase conventions, no business context.</p>
 
-  <h3>Tier 1: Global &mdash; <code>~/.claude/CLAUDE.md</code></h3>
+        <p>That&rsquo;s fine for one-off tasks. It&rsquo;s a problem when you&rsquo;re doing sustained work across days or weeks. You don&rsquo;t want to re-explain your project&rsquo;s architecture, your database schema, or what your boss said in yesterday&rsquo;s meeting.</p>
 
-  <p>Rules that apply to <strong>every project, every session</strong>. This is where you put non-negotiable behaviors. Examples from our setup:</p>
-  <ul>
-    <li>After any code changes &rarr; update the changelog and business context files</li>
-    <li>After EVERY conversation &rarr; update the business context log</li>
-    <li>Before writing any database query &rarr; read the query reference guide</li>
-    <li>All data analysis must be script-driven (never mental math)</li>
-  </ul>
+        <p>We solve this with three mechanisms:</p>
 
-  <p class="small">These exist because Claude has predictable failure modes &mdash; forgetting to maintain context, doing approximate math. Making rules explicit and global prevents drift.</p>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-num-circle">1</div>
+            <div class="step-content">
+              <strong>Configuration files</strong>
+              <span>Written instructions Claude reads at the start of every session. Like an employee handbook.</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-circle">2</div>
+            <div class="step-content">
+              <strong>Memory files</strong>
+              <span>A living knowledge base that grows across sessions. Like a shared team wiki.</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-circle">3</div>
+            <div class="step-content">
+              <strong>A SessionStart hook</strong>
+              <span>A script that automatically injects the latest context into every session. Like a daily briefing.</span>
+            </div>
+          </div>
+        </div>
 
-  <p><strong>What to put here:</strong> Anything you&rsquo;d tell a new team member on day one that applies regardless of which project they&rsquo;re working on.</p>
+        <div class="callout callout-blue">
+          <strong>The result</strong>
+          Every new session starts with full awareness of your project, conventions, recent work, and strategic context. No manual re-explanation needed.
+        </div>
+      </section>
 
-  <h3>Tier 2: Project &mdash; <code>&lt;repo&gt;/CLAUDE.md</code></h3>
 
-  <p>Each repository gets its own <code>CLAUDE.md</code> at the root with project-specific context:</p>
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="config">
+        <h2><span class="sec-num">02</span> Configuration Hierarchy</h2>
 
-  <table>
-    <tr><th style="width: 35%;">What to Include</th><th>Why</th></tr>
-    <tr><td>What the project does</td><td>Enough that Claude can reason about it without asking</td></tr>
-    <tr><td>Code conventions</td><td>Formatter, line length, naming patterns, preferred libraries</td></tr>
-    <tr><td>Domain concepts</td><td>Your framework, your terminology, your business logic</td></tr>
-    <tr><td>File organization</td><td>Where scripts live, where docs go, how things are structured</td></tr>
-    <tr><td>Key workflows</td><td>How to run tests, how to deploy, how to verify output</td></tr>
-  </table>
+        <p>Claude Code reads instructions from three tiers, loaded in order. Think <code>.gitconfig</code> (global) vs <code>.git/config</code> (repo-level).</p>
 
-  <div class="callout">
-    <strong>Key principle</strong>
-    If you find yourself re-explaining something every session, it belongs in the CLAUDE.md. Put enough domain context in there that Claude can work autonomously without you narrating every step.
-  </div>
+        <h3>Tier 1: Global &mdash; <code>~/.claude/CLAUDE.md</code></h3>
 
-  <h3>Tier 3: Settings &mdash; <code>~/.claude/settings.json</code></h3>
+        <p>Rules that apply to <strong>every project, every session</strong>. This is where you put non-negotiable behaviors. Examples:</p>
+        <ul>
+          <li>After any code changes &rarr; update the changelog and business context files</li>
+          <li>After EVERY conversation &rarr; update the business context log</li>
+          <li>Before writing any database query &rarr; read the query reference guide</li>
+          <li>All data analysis must be script-driven (never mental math)</li>
+        </ul>
 
-  <p>Configuration for hooks and external integrations:</p>
+        <div class="callout callout-gray">
+          <strong>Why these exist</strong>
+          Claude has predictable failure modes: forgetting to maintain context, doing approximate math. Making rules explicit and global prevents drift.
+        </div>
 
-  <div class="code-block">{
+        <p><strong>What to put here:</strong> Anything you&rsquo;d tell a new team member on day one that applies regardless of which project they&rsquo;re working on.</p>
+
+        <h3>Tier 2: Project &mdash; <code>&lt;repo&gt;/CLAUDE.md</code></h3>
+
+        <p>Each repository gets its own <code>CLAUDE.md</code> at the root with project-specific context:</p>
+
+        <table>
+          <tr><th style="width: 35%;">What to Include</th><th>Why</th></tr>
+          <tr><td>What the project does</td><td>Enough that Claude can reason about it without asking</td></tr>
+          <tr><td>Code conventions</td><td>Formatter, line length, naming patterns, preferred libraries</td></tr>
+          <tr><td>Domain concepts</td><td>Your framework, your terminology, your business logic</td></tr>
+          <tr><td>File organization</td><td>Where scripts live, where docs go, how things are structured</td></tr>
+          <tr><td>Key workflows</td><td>How to run tests, how to deploy, how to verify output</td></tr>
+        </table>
+
+        <div class="callout callout-blue">
+          <strong>Key principle</strong>
+          If you find yourself re-explaining something every session, it belongs in the CLAUDE.md. Put enough domain context in there that Claude can work autonomously without you narrating every step.
+        </div>
+
+        <h3>Tier 3: Settings &mdash; <code>~/.claude/settings.json</code></h3>
+
+        <p>Configuration for hooks and external integrations:</p>
+
+        <div class="code-block">{
   "hooks": {
     "SessionStart": [{
       "hooks": [{
@@ -142,90 +450,81 @@
   }
 }</div>
 
-  <p>This is where you define your SessionStart hook (see Section 4) and any MCP server connections for external APIs.</p>
+        <p>This is where you define your SessionStart hook (see Section 4) and any MCP server connections for external APIs.</p>
+      </section>
 
 
-  <!-- ================================================================ -->
-  <h2><span class="section-num">3.</span> The Memory System</h2>
-  <!-- ================================================================ -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="memory">
+        <h2><span class="sec-num">03</span> The Memory System</h2>
 
-  <p>Claude Code has a built-in memory directory at <code>~/.claude/projects/&lt;project-path&gt;/memory/</code>. Files here persist across sessions. The key is <em>how</em> you organize them.</p>
+        <p>Claude Code has a built-in memory directory at <code>~/.claude/projects/&lt;project-path&gt;/memory/</code>. Files here persist across sessions. The key is <em>how</em> you organize them.</p>
 
-  <h3><code>MEMORY.md</code> &mdash; The Index</h3>
+        <div class="card-grid single">
+          <div class="info-card full-width">
+            <div class="accent-bar accent-green"></div>
+            <h4><code>MEMORY.md</code> &mdash; The Index</h4>
+            <p>The first 200 lines get <strong>injected into every session&rsquo;s system prompt automatically</strong>. Use as a concise index: project overview, key metrics, links to other memory files.</p>
+            <p><strong>Keep it tight.</strong> The 200-line limit is real. Detailed reference material goes in dedicated files.</p>
+          </div>
+        </div>
 
-  <p>The first 200 lines of this file get <strong>injected into every session&rsquo;s system prompt automatically</strong>. Use it as a concise index:</p>
-  <ul>
-    <li>Project overview (what you&rsquo;re building, what stack)</li>
-    <li>Key metrics or goals Claude should always consider</li>
-    <li>Links to other memory files (with one-line descriptions of each)</li>
-  </ul>
+        <div class="card-grid single">
+          <div class="info-card full-width">
+            <div class="accent-bar accent-purple"></div>
+            <h4><code>CURRENT_STATE.md</code> &mdash; Where You Are Right Now</h4>
+            <p>A curated summary (~50-80 lines) of the current strategic landscape. Unlike the append-only logs below, this file gets <strong>rewritten</strong> (not appended) when the situation shifts meaningfully.</p>
+            <table>
+              <tr><th style="width: 35%;">Section</th><th>What It Contains</th></tr>
+              <tr><td>Active projects</td><td>What&rsquo;s in flight, what phase each is in, what&rsquo;s blocked</td></tr>
+              <tr><td>Key findings</td><td>Conclusions still informing current work</td></tr>
+              <tr><td>Open decisions</td><td>Unresolved questions awaiting input or analysis</td></tr>
+              <tr><td>Stakeholder context</td><td>What leadership has said that&rsquo;s still directing work</td></tr>
+            </table>
+            <p>Gets injected <strong>in full</strong> into every session by the hook. Rewrite when the landscape shifts: new key finding, stakeholder directive, project phase change, or major decision.</p>
+          </div>
+        </div>
 
-  <p><strong>Keep it tight.</strong> The 200-line limit is real. Detailed reference material goes in dedicated files, not here.</p>
+        <div class="card-grid">
+          <div class="info-card">
+            <div class="accent-bar accent-green"></div>
+            <h4><code>CHANGELOG.md</code></h4>
+            <p>Running log of every code and config change. Dated sections. Updated automatically by Claude after any code work. Latest entry injected by the hook.</p>
+          </div>
+          <div class="info-card">
+            <div class="accent-bar accent-green"></div>
+            <h4><code>BUSINESS_CONTEXT.md</code></h4>
+            <p>Business insights, strategic decisions, meeting notes, observations. Updated after <strong>every</strong> conversation. Latest entry injected by the hook.</p>
+          </div>
+        </div>
 
-  <h3><code>CURRENT_STATE.md</code> &mdash; Where You Are Right Now</h3>
+        <div class="callout callout-amber" style="margin-top: 4px; font-size: 13px;">
+          <strong>Archive rotation</strong>
+          When BUSINESS_CONTEXT exceeds ~800 lines, move entries older than 14 days to <code>BUSINESS_CONTEXT_ARCHIVE.md</code>. Before archiving, verify active context is captured in CURRENT_STATE.
+        </div>
 
-  <p>A curated summary (~50-80 lines) of the current strategic landscape. Unlike the append-only logs below, this file gets <strong>rewritten</strong> (not appended) when the situation shifts meaningfully.</p>
+        <h3>Domain Reference Files</h3>
 
-  <table>
-    <tr><th style="width: 35%;">Section</th><th>What It Contains</th></tr>
-    <tr><td>Active projects</td><td>What&rsquo;s in flight, what phase each is in, what&rsquo;s blocked</td></tr>
-    <tr><td>Key findings</td><td>Conclusions still informing current work</td></tr>
-    <tr><td>Open decisions</td><td>Unresolved questions awaiting input or analysis</td></tr>
-    <tr><td>Stakeholder context</td><td>What leadership has said that&rsquo;s still directing work</td></tr>
-  </table>
+        <p>Create dedicated <code>.md</code> files for any knowledge Claude needs to consult regularly:</p>
 
-  <p>Gets injected <strong>in full</strong> into every session by the hook (see Section 4). Rewrite when the landscape shifts: new key finding, stakeholder directive, project phase change, or major decision.</p>
+        <table>
+          <tr><th>Example</th><th>What It Contains</th></tr>
+          <tr><td>Database query guide</td><td>Schemas, default filters, connection config, gotchas</td></tr>
+          <tr><td>Writing playbook</td><td>How to structure briefs, proposals, or reports for your team</td></tr>
+          <tr><td>Stakeholder framework</td><td>Leadership vision, open questions, exploration priorities</td></tr>
+        </table>
 
-  <h3><code>CHANGELOG.md</code> &mdash; What Changed</h3>
-
-  <p>A running log of every code and config change. Format with dated sections:</p>
-
-  <div class="code-block">## 2026-02-18
-
-### [project-name] &mdash; Brief description
-
-What was done and why.
-
-**Files created/modified:**
-- path/to/file.py &mdash; What it does</div>
-
-  <p>Gets updated automatically by Claude (enforced by global CLAUDE.md rules). The latest entry gets injected into every new session by the hook.</p>
-
-  <h3><code>BUSINESS_CONTEXT.md</code> &mdash; What You Know</h3>
-
-  <p>A running log of business insights, strategic decisions, meeting notes, and observations. Updated after <strong>every</strong> conversation &mdash; not just code sessions.</p>
-
-  <p>This is your institutional memory. It captures things like:</p>
-  <ul>
-    <li>Stakeholder feedback from meetings</li>
-    <li>Data findings and their implications</li>
-    <li>Strategic decisions and the reasoning behind them</li>
-    <li>Definitions and clarifications of domain terms</li>
-  </ul>
-
-  <p class="small"><strong>Archive rotation:</strong> When this file exceeds ~800 lines, move entries older than 14 days to <code>BUSINESS_CONTEXT_ARCHIVE.md</code>. Before archiving, verify active context is captured in <code>CURRENT_STATE.md</code>.</p>
-
-  <h3>Domain Reference Files</h3>
-
-  <p>Create dedicated <code>.md</code> files for any knowledge Claude needs to consult regularly:</p>
-
-  <table>
-    <tr><th>Example</th><th>What It Contains</th></tr>
-    <tr><td>Database query guide</td><td>Schemas, default filters, connection config, gotchas</td></tr>
-    <tr><td>Writing playbook</td><td>How to structure briefs, proposals, or reports for your team</td></tr>
-    <tr><td>Stakeholder framework</td><td>Leadership vision, open questions, exploration priorities</td></tr>
-  </table>
-
-  <p>Claude reads these on demand. A rule like &ldquo;before writing any SQL, read the query guide&rdquo; (in global CLAUDE.md) ensures it actually does.</p>
+        <p>Claude reads these on demand. A rule like &ldquo;before writing any SQL, read the query guide&rdquo; (in global CLAUDE.md) ensures it actually does.</p>
+      </section>
 
 
-  <!-- ================================================================ -->
-  <h2><span class="section-num">4.</span> The SessionStart Hook</h2>
-  <!-- ================================================================ -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="hook">
+        <h2><span class="sec-num">04</span> The SessionStart Hook</h2>
 
-  <p>This is what makes the memory system <strong>proactive</strong> instead of passive. It&rsquo;s a short shell script that runs at the start of every session:</p>
+        <p>This is what makes the memory system <strong>proactive</strong> instead of passive. A short shell script that runs at the start of every session:</p>
 
-  <div class="code-block">#!/bin/bash
+        <div class="code-block">#!/bin/bash
 MEMORY_DIR="~/.claude/projects/&lt;your-project&gt;/memory"
 
 echo "=== CURRENT STATE ==="
@@ -241,151 +540,187 @@ echo "=== RECENT BUSINESS CONTEXT (last entry) ==="
 awk '/^## [0-9]{4}-/{if(found) exit; found=1} found' \
   "$MEMORY_DIR/BUSINESS_CONTEXT.md"</div>
 
-  <p><strong>What it does:</strong> Injects three things into every session: (1) CURRENT_STATE in full (curated strategic summary), (2) latest dated section from CHANGELOG, (3) latest dated section from BUSINESS_CONTEXT.</p>
+        <p><strong>What it does:</strong> Injects three things into every session:</p>
+        <ol>
+          <li><strong>CURRENT_STATE</strong> &mdash; the full curated strategic summary (always current)</li>
+          <li><strong>CHANGELOG</strong> &mdash; the most recent dated section (what changed last)</li>
+          <li><strong>BUSINESS_CONTEXT</strong> &mdash; the most recent dated section (what you learned last)</li>
+        </ol>
 
-  <div class="callout">
-    <strong>The feedback loop</strong>
-    <ol style="margin: 4px 0 0 18px;">
-      <li>You have a conversation &rarr; Claude updates logs (and rewrites CURRENT_STATE if the landscape shifted)</li>
-      <li>You close the session</li>
-      <li>Next time you open Claude Code &rarr; hook injects everything</li>
-      <li>Claude picks up with full awareness &rarr; you continue where you left off</li>
-    </ol>
-    No &ldquo;where were we?&rdquo; needed. Session continuity is automatic.
-  </div>
+        <p>The <code>awk</code> one-liner extracts the first dated section (<code>## YYYY-MM-DD</code>) from each file. <code>CURRENT_STATE</code> is small enough to inject in full via <code>cat</code>.</p>
 
-
-  <!-- ================================================================ -->
-  <h2><span class="section-num">5.</span> Guardrails That Matter</h2>
-  <!-- ================================================================ -->
-
-  <h3>Analytical Rigor</h3>
-
-  <p>If you use Claude Code for any kind of data analysis, put this in your global CLAUDE.md:</p>
-
-  <div class="callout">
-    All data analysis must use Python scripts (pandas, numpy, etc.) to compute results. Every number presented must come from script output. Never do mental math, eyeball data, or approximate &mdash; even on small datasets.
-  </div>
-
-  <p>Claude will do mental math if you let it. It&rsquo;ll eyeball a CSV and say &ldquo;about 40% are profitable&rdquo; when the real number is 34%. Making the rule explicit eliminates this.</p>
-
-  <h3>Artifact Verification</h3>
-
-  <p>If Claude produces documents with data claims (reports, presentations, briefs), consider building a verification pipeline. This is a set of scripts that work together to catch errors before stakeholders do.</p>
-
-  <p><strong>The pipeline has three roles:</strong></p>
-
-  <ol>
-    <li><strong>Analysis script (<code>--claims</code> flag)</strong> &mdash; Your main analysis script does double duty. Run normally: human-readable report. Run with <code>--claims</code>: also outputs a JSON manifest of every verifiable fact (values, types, tolerances). This is the source of truth.</li>
-    <li><strong>Verification script</strong> &mdash; Takes an HTML artifact + the claims JSON. Runs deterministic checks (PASS/FAIL: rounded millions, exact integers, percentages, dollar amounts) and semantic checks (WARN: absolutist claims, equivalence claims, causal claims, status claims).</li>
-    <li><strong>Validation scripts</strong> &mdash; Cross-reference your findings against external data sources (e.g., per-message API data) to detect aggregation artifacts, inflated estimates, or methodology issues. These catch problems in the <em>analysis itself</em>, not just the document.</li>
-  </ol>
-
-  <p>Put the verification protocol in your project CLAUDE.md so Claude runs it automatically after any document edit. The protocol: run analysis with <code>--claims</code> &rarr; run verification &rarr; fix all FAILs &rarr; review all WARNs &rarr; re-run clean.</p>
-
-  <p class="small">This pattern has caught: a claim that said &ldquo;same creative&rdquo; when it was actually &ldquo;same offer,&rdquo; a claim of &ldquo;all 10&rdquo; that was actually 9 of 10, rounding discrepancies in percentages, and $248K in inflated opportunity estimates from data aggregation artifacts.</p>
+        <div class="callout callout-green">
+          <strong>The feedback loop</strong>
+          <ol style="margin: 6px 0 0 20px;">
+            <li>You have a conversation &rarr; Claude updates logs (and rewrites CURRENT_STATE if the landscape shifted)</li>
+            <li>You close the session</li>
+            <li>Next time you open Claude Code &rarr; hook injects everything</li>
+            <li>Claude picks up with full awareness &rarr; you continue where you left off</li>
+          </ol>
+          <p style="margin-top: 8px;">No &ldquo;where were we?&rdquo; needed. Session continuity is automatic.</p>
+        </div>
+      </section>
 
 
-  <!-- ================================================================ -->
-  <h2><span class="section-num">6.</span> Extending Claude Code</h2>
-  <!-- ================================================================ -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="guardrails">
+        <h2><span class="sec-num">05</span> Guardrails That Matter</h2>
 
-  <h3>Google Drive Access</h3>
+        <h3>Analytical Rigor</h3>
 
-  <p>We built a small Python utility that lets Claude search, read, and download files from Google Drive:</p>
+        <p>If you use Claude Code for any kind of data analysis, put this in your global CLAUDE.md:</p>
 
-  <div class="code-block">python3 gdrive_auth.py search "query"      # Search files
+        <div class="callout callout-amber" style="font-style: italic;">
+          All data analysis must use Python scripts (pandas, numpy, etc.) to compute results. Every number presented must come from script output. Never do mental math, eyeball data, or approximate &mdash; even on small datasets.
+        </div>
+
+        <p>Claude will do mental math if you let it. It&rsquo;ll eyeball a CSV and say &ldquo;about 40% are profitable&rdquo; when the real number is 34%. Making the rule explicit eliminates this.</p>
+
+        <h3>Artifact Verification</h3>
+
+        <p>If Claude produces documents with data claims (reports, presentations, briefs), consider building a verification pipeline. Three scripts work together to catch errors before stakeholders do:</p>
+
+        <div class="step-list" style="margin-top: 16px;">
+          <div class="step-item">
+            <div class="step-num-circle" style="background: #d97706;">1</div>
+            <div class="step-content">
+              <strong>Analysis Script (<code>--claims</code> flag)</strong>
+              <span>Your main analysis script does double duty. Run normally: human-readable report. Run with <code>--claims</code>: also outputs a JSON manifest of every verifiable fact (values, types, tolerances). This is the source of truth.</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-circle" style="background: #d97706;">2</div>
+            <div class="step-content">
+              <strong>Verification Script</strong>
+              <span>Takes an HTML artifact + the claims JSON. Runs <strong>deterministic checks</strong> (PASS/FAIL: rounded millions, exact integers, percentages, dollar amounts) and <strong>semantic checks</strong> (WARN: absolutist claims, equivalence claims, causal claims, status claims).</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num-circle" style="background: #d97706;">3</div>
+            <div class="step-content">
+              <strong>Validation Scripts</strong>
+              <span>Cross-reference your findings against external data sources (e.g., per-message API data) to detect aggregation artifacts, inflated estimates, or methodology issues. These catch problems in the <em>analysis itself</em>, not just the document.</span>
+            </div>
+          </div>
+        </div>
+
+        <p>Put the verification protocol in your project CLAUDE.md so Claude runs it automatically after any document edit. The protocol: run analysis with <code>--claims</code> &rarr; run verification &rarr; fix all FAILs &rarr; review all WARNs &rarr; re-run clean.</p>
+
+        <div class="callout callout-gray" style="font-size: 13px;">
+          <strong>Real catches</strong>
+          This pattern has caught: a claim that said &ldquo;same creative&rdquo; when it was actually &ldquo;same offer&rdquo; (subject lines differed), a claim of &ldquo;all 10&rdquo; that was actually 9 of 10, rounding discrepancies in percentages, and $248K in inflated opportunity estimates from data aggregation artifacts.
+        </div>
+      </section>
+
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="extending">
+        <h2><span class="sec-num">06</span> Extending Claude Code</h2>
+
+        <h3>Google Drive Access</h3>
+
+        <p>We built a small Python utility that lets Claude search, read, and download files from Google Drive:</p>
+
+        <div class="code-block">python3 gdrive_auth.py search "query"      # Search files
 python3 gdrive_auth.py read FILE_ID         # Read a Google Doc as text
 python3 gdrive_auth.py download FILE_ID     # Download a file
 python3 gdrive_auth.py list                 # List recent files</div>
 
-  <p>Useful when your team&rsquo;s documentation lives in Drive. Claude can pull in context from shared docs without you copy-pasting.</p>
+        <p>Useful when your team&rsquo;s documentation lives in Drive. Claude can pull in context from shared docs without you copy-pasting.</p>
 
-  <h3>The Pattern for Any External Tool</h3>
+        <h3>The Pattern for Any External Tool</h3>
 
-  <p>The general approach:</p>
-  <ol>
-    <li>Write a small CLI utility that handles auth and API calls</li>
-    <li>Document the commands in your MEMORY.md or a reference file</li>
-    <li>Claude will use it like any other command-line tool</li>
-  </ol>
+        <ol>
+          <li>Write a small CLI utility that handles auth and API calls</li>
+          <li>Document the commands in your MEMORY.md or a reference file</li>
+          <li>Claude will use it like any other command-line tool</li>
+        </ol>
 
-  <p>You can also use <strong>MCP servers</strong> (Model Context Protocol) to give Claude direct API access to external services. These are configured in <code>settings.json</code> and give Claude native tool access to third-party platforms without custom scripts.</p>
-
-
-  <!-- ================================================================ -->
-  <h2><span class="section-num">7.</span> Day-to-Day Patterns</h2>
-  <!-- ================================================================ -->
-
-  <h3>Starting a new session</h3>
-  <p>Open Claude Code in your repo directory. The hook fires, context loads, Claude is up to speed. Just start working.</p>
-
-  <h3>Cross-session continuity</h3>
-  <p>Monday you do deep analysis. Tuesday you open a new session &mdash; the hook injects Monday&rsquo;s changelog and business context. Claude picks up where you left off. Wednesday your boss gives feedback &mdash; you tell Claude, it updates the business context. Thursday&rsquo;s session knows what the boss said.</p>
-
-  <h3>Adding domain knowledge</h3>
-  <table>
-    <tr><th>What You Learned</th><th>Where It Goes</th></tr>
-    <tr><td>New database table or column</td><td>Your query reference guide</td></tr>
-    <tr><td>New strategic decision</td><td>Captured in BUSINESS_CONTEXT automatically</td></tr>
-    <tr><td>New convention or process</td><td>Relevant CLAUDE.md (global or project)</td></tr>
-    <tr><td>New reference document</td><td>Create file in memory directory, add to MEMORY.md index</td></tr>
-  </table>
-
-  <h3>Building documents for stakeholders</h3>
-  <p>Claude writes HTML with inline styles (no external dependencies) &rarr; you copy-paste into Google Docs with formatting intact. If you have a verification pipeline, run it before sharing.</p>
+        <p>You can also use <strong>MCP servers</strong> (Model Context Protocol) to give Claude direct API access to external services. These are configured in <code>settings.json</code> and give Claude native tool access to third-party platforms without custom scripts.</p>
+      </section>
 
 
-  <!-- ================================================================ -->
-  <h2>Quick Reference: File Map</h2>
-  <!-- ================================================================ -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="patterns">
+        <h2><span class="sec-num">07</span> Day-to-Day Patterns</h2>
 
-  <table>
-    <tr><th>Location</th><th>File</th><th>Purpose</th></tr>
-    <tr style="background: #f0f7ff;">
-      <td rowspan="3" style="vertical-align: top;"><strong><code>~/.claude/</code></strong></td>
-      <td><code>CLAUDE.md</code></td>
-      <td>Global rules (all sessions)</td>
-    </tr>
-    <tr style="background: #f0f7ff;">
-      <td><code>settings.json</code></td>
-      <td>Hooks + integrations config</td>
-    </tr>
-    <tr style="background: #f0f7ff;">
-      <td><code>scripts/session-context.sh</code></td>
-      <td>SessionStart hook</td>
-    </tr>
-    <tr>
-      <td rowspan="6" style="vertical-align: top;"><strong><code>memory/</code></strong></td>
-      <td><code>MEMORY.md</code></td>
-      <td>Index (auto-loaded, 200-line limit)</td>
-    </tr>
-    <tr>
-      <td><code>CURRENT_STATE.md</code></td>
-      <td>Strategic summary (rewritten, injected in full)</td>
-    </tr>
-    <tr>
-      <td><code>CHANGELOG.md</code></td>
-      <td>Code changes (auto-updated, latest injected)</td>
-    </tr>
-    <tr>
-      <td><code>BUSINESS_CONTEXT.md</code></td>
-      <td>Business knowledge (auto-updated, latest injected)</td>
-    </tr>
-    <tr>
-      <td><code>BUSINESS_CONTEXT_ARCHIVE.md</code></td>
-      <td>Archived entries (&gt;14 days old)</td>
-    </tr>
-    <tr>
-      <td><code>*.md</code></td>
-      <td>Domain reference files (on demand)</td>
-    </tr>
-    <tr style="background: #f0f7ff;">
-      <td style="vertical-align: top;"><strong><code>your-project/</code></strong></td>
-      <td><code>CLAUDE.md</code></td>
-      <td>Project-specific rules + domain context</td>
-    </tr>
-  </table>
+        <h3>Starting a new session</h3>
+        <p>Open Claude Code in your repo directory. The hook fires, context loads, Claude is up to speed. Just start working.</p>
+
+        <h3>Cross-session continuity</h3>
+        <p>Monday you do deep analysis. Tuesday you open a new session &mdash; the hook injects Monday&rsquo;s changelog and business context. Claude picks up where you left off. Wednesday your boss gives feedback &mdash; you tell Claude, it updates the business context. Thursday&rsquo;s session knows what the boss said.</p>
+
+        <h3>Adding domain knowledge</h3>
+
+        <table>
+          <tr><th>What You Learned</th><th>Where It Goes</th></tr>
+          <tr><td>New database table or column</td><td>Your query reference guide</td></tr>
+          <tr><td>New strategic decision</td><td>Captured in BUSINESS_CONTEXT automatically</td></tr>
+          <tr><td>New convention or process</td><td>Relevant CLAUDE.md (global or project)</td></tr>
+          <tr><td>New reference document</td><td>Create file in memory directory, add to MEMORY.md index</td></tr>
+        </table>
+
+        <h3>Building documents for stakeholders</h3>
+        <p>Claude writes HTML with inline styles (no external dependencies) &rarr; you copy-paste into Google Docs with formatting intact. If you have a verification pipeline, run it before sharing.</p>
+      </section>
+
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section id="reference">
+        <h2><span class="sec-num">08</span> Quick Reference</h2>
+
+        <div class="file-map"><span class="dir">~/.claude/</span>
+├── <span class="file">CLAUDE.md</span>                       <span class="comment"># Global rules (all sessions)</span>
+├── <span class="file">settings.json</span>                   <span class="comment"># Hooks + integrations</span>
+├── <span class="dir">scripts/</span>
+│   └── <span class="file">session-context.sh</span>          <span class="comment"># SessionStart hook</span>
+└── <span class="dir">projects/.../memory/</span>
+    ├── <span class="file">MEMORY.md</span>                   <span class="comment"># Index (auto-loaded, 200-line limit)</span>
+    ├── <span class="file">CURRENT_STATE.md</span>            <span class="comment"># Strategic summary (rewritten, injected in full)</span>
+    ├── <span class="file">CHANGELOG.md</span>                <span class="comment"># Code changes (auto-updated, latest injected)</span>
+    ├── <span class="file">BUSINESS_CONTEXT.md</span>         <span class="comment"># Business knowledge (auto-updated, latest injected)</span>
+    ├── <span class="file">BUSINESS_CONTEXT_ARCHIVE.md</span> <span class="comment"># Archived entries (>14 days old)</span>
+    └── <span class="file">*.md</span>                        <span class="comment"># Domain reference files (on demand)</span>
+
+<span class="dir">~/your-project/</span>
+├── <span class="file">CLAUDE.md</span>                       <span class="comment"># Project-specific rules + domain context</span>
+├── <span class="dir">scripts/</span>                        <span class="comment"># Your code</span>
+└── <span class="dir">docs/</span>                           <span class="comment"># Your output</span></div>
+
+      </section>
+
+    </div>
+  </div>
+
+
+  <script>
+    // ── Active sidebar link tracking via IntersectionObserver ──
+    var sections = document.querySelectorAll('section[id]');
+    var navLinks = document.querySelectorAll('.sidebar a');
+
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          navLinks.forEach(function(link) { link.classList.remove('active'); });
+          var active = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+
+    sections.forEach(function(section) { observer.observe(section); });
+
+    // ── Smooth scroll on sidebar click ──
+    navLinks.forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        var target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        navLinks.forEach(function(l) { l.classList.remove('active'); });
+        this.classList.add('active');
+      });
+    });
+  </script>
 
 </body>
 </html>
